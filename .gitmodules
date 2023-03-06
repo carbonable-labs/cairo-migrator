@@ -1,0 +1,6 @@
+[submodule "cairo_contracts"]
+	path = lib/cairo_contracts
+	url = https://github.com/OpenZeppelin/cairo-contracts
+[submodule "cairo_erc_3525"]
+	path = lib/cairo_erc_3525
+	url = https://github.com/carbonable-labs/cairo-erc-3525
