@@ -10,7 +10,14 @@ from starkware.cairo.common.uint256 import Uint256, uint256_check, uint256_eq
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
 // Project dependencies
+from openzeppelin.introspection.erc165.IERC165 import IERC165
+from openzeppelin.token.erc721.IERC721 import IERC721
+from openzeppelin.utils.constants.library import IERC721_ID
 from erc3525.IERC3525Full import IERC3525Full
+from erc3525.utils.constants.library import IERC3525_ID
+
+// Local dependencies
+from migrator.IERC721Burnable import IERC721Burnable
 
 //
 // Events
@@ -60,12 +67,28 @@ namespace Migrator {
             uint256_check(value);
         }
 
-        // [Check] addresses are not null
+        // [Check] Addresses are not null
         with_attr error_message("Migrator: source cannot be the null address") {
             assert_not_zero(source_address);
         }
         with_attr error_message("Migrator: target cannot be the null address") {
             assert_not_zero(target_address);
+        }
+
+        // [Check] Source is an ERC-721
+        let (is_erc721) = IERC165.supportsInterface(
+            contract_address=source_address, interfaceId=IERC721_ID
+        );
+        with_attr error_message("Migrator: source does not support EIP-721 interface") {
+            assert_not_zero(is_erc721);
+        }
+
+        // [Check] Target is an ERC-3525
+        let (is_erc3525) = IERC165.supportsInterface(
+            contract_address=target_address, interfaceId=IERC3525_ID
+        );
+        with_attr error_message("Migrator: target does not support EIP-3525 interface") {
+            assert_not_zero(is_erc3525);
         }
 
         // [Check] Value is not null
@@ -134,12 +157,12 @@ namespace Migrator {
         let (source_address) = Migrator_source_address_.read();
         let (caller) = get_caller_address();
         let (contract_address) = get_contract_address();
-        IERC3525Full.transferFrom(
+        IERC721.transferFrom(
             contract_address=source_address, from_=caller, to=contract_address, tokenId=token_id
         );
 
         // [Interaction] Burn the token
-        IERC3525Full.burn(contract_address=source_address, tokenId=token_id);
+        IERC721Burnable.burn(contract_address=source_address, tokenId=token_id);
 
         // [Interaction] Mint the new token with the corresponding value
         let (target_address) = Migrator_target_address_.read();

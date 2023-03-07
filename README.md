@@ -1,5 +1,5 @@
 <div align="center">
-  <h1 align="center">ERC-4906: EIP-721 Metadata Update Extension</h1>
+  <h1 align="center">Migrator: ERC-721 to ERC-3525 Migrator Extension</h1>
   <p align="center">
     <a href="https://discord.gg/qqkBpmRDFE">
         <img src="https://img.shields.io/badge/Discord-6666FF?style=for-the-badge&logo=discord&logoColor=white">
@@ -8,12 +8,12 @@
         <img src="https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white">
     </a>       
   </p>
-  <h3 align="center">EIP-721 Metadata Update Extension Contracts written in Cairo for Starknet.</h3>
+  <h3 align="center">ERC-721 to ERC-3525 Migrator Extension Contracts written in Cairo for Starknet.</h3>
 </div>
 
 ### About
 
-A Cairo implementation of [EIP-4906](https://eips.ethereum.org/EIPS/eip-4906) based on [Openzeppelin Solidity implementation](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/interfaces/IERC4906.sol). EIP-4906 is an Ethereum standard for EIP-721 Metadata Update Extension.
+A Cairo implementation of a ERC-721 to ERC-3525 migrator.
 
 > ## ⚠️ WARNING! ⚠️
 >
@@ -30,26 +30,19 @@ A Cairo implementation of [EIP-4906](https://eips.ethereum.org/EIPS/eip-4906) ba
 ### 🎉 Install
 
 ```bash
-protostar install
+make install
 ```
 
 ### ⛏️ Compile
 
 ```bash
-make
+make build
 ```
 
 ### 🌡️ Test
 
 ```bash
-# Run all tests
 make test
-
-# Run only unit tests
-protostar test tests/units
-
-# Run only integration tests
-protostar test tests/integrations
 ```
 
 ## 📄 License

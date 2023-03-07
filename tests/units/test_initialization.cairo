@@ -19,7 +19,11 @@ const VALUE = 0x10;
 func test_initialization{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*}() {
     let slot = Uint256(low=SLOT, high=0);
     let value = Uint256(low=VALUE, high=0);
+    %{ stop_mock_source = mock_call(ids.SOURCE, "supportsInterface", [1]) %}
+    %{ stop_mock_target = mock_call(ids.TARGET, "supportsInterface", [1]) %}
     Migrator.initializer(source_address=SOURCE, target_address=TARGET, slot=slot, value=value);
+    %{ stop_mock_source() %}
+    %{ stop_mock_target() %}
     return ();
 }
 
@@ -46,13 +50,47 @@ func test_initialization_revert_invalid_value{
 }
 
 @external
+func test_initialization_revert_not_erc721{
+    syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*
+}() {
+    let slot = Uint256(low=SLOT, high=0);
+    let value = Uint256(low=VALUE, high=0);
+    %{ stop_mock_source = mock_call(ids.SOURCE, "supportsInterface", [0]) %}
+    %{ stop_mock_target = mock_call(ids.TARGET, "supportsInterface", [1]) %}
+    %{ expect_revert("TRANSACTION_FAILED", "Migrator: source does not support EIP-721 interface") %}
+    Migrator.initializer(source_address=SOURCE, target_address=TARGET, slot=slot, value=value);
+    %{ stop_mock_source() %}
+    %{ stop_mock_target() %}
+    return ();
+}
+
+@external
+func test_initialization_revert_not_erc3525{
+    syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*
+}() {
+    let slot = Uint256(low=SLOT, high=0);
+    let value = Uint256(low=VALUE, high=0);
+    %{ stop_mock_source = mock_call(ids.SOURCE, "supportsInterface", [1]) %}
+    %{ stop_mock_target = mock_call(ids.TARGET, "supportsInterface", [0]) %}
+    %{ expect_revert("TRANSACTION_FAILED", "Migrator: target does not support EIP-3525 interface") %}
+    Migrator.initializer(source_address=SOURCE, target_address=TARGET, slot=slot, value=value);
+    %{ stop_mock_source() %}
+    %{ stop_mock_target() %}
+    return ();
+}
+
+@external
 func test_initialization_revert_null_source{
     syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*
 }() {
     let slot = Uint256(low=SLOT, high=0);
     let value = Uint256(low=VALUE, high=0);
+    %{ stop_mock_source = mock_call(ids.SOURCE, "supportsInterface", [1]) %}
+    %{ stop_mock_target = mock_call(ids.TARGET, "supportsInterface", [1]) %}
     %{ expect_revert("TRANSACTION_FAILED", "Migrator: source cannot be the null address") %}
     Migrator.initializer(source_address=0, target_address=TARGET, slot=slot, value=value);
+    %{ stop_mock_source() %}
+    %{ stop_mock_target() %}
     return ();
 }
 
@@ -62,8 +100,12 @@ func test_initialization_revert_null_target{
 }() {
     let slot = Uint256(low=SLOT, high=0);
     let value = Uint256(low=VALUE, high=0);
+    %{ stop_mock_source = mock_call(ids.SOURCE, "supportsInterface", [1]) %}
+    %{ stop_mock_target = mock_call(ids.TARGET, "supportsInterface", [1]) %}
     %{ expect_revert("TRANSACTION_FAILED", "Migrator: target cannot be the null address") %}
     Migrator.initializer(source_address=SOURCE, target_address=0, slot=slot, value=value);
+    %{ stop_mock_source() %}
+    %{ stop_mock_target() %}
     return ();
 }
 
@@ -73,7 +115,11 @@ func test_initialization_revert_null_value{
 }() {
     let slot = Uint256(low=SLOT, high=0);
     let zero = Uint256(low=0, high=0);
+    %{ stop_mock_source = mock_call(ids.SOURCE, "supportsInterface", [1]) %}
+    %{ stop_mock_target = mock_call(ids.TARGET, "supportsInterface", [1]) %}
     %{ expect_revert("TRANSACTION_FAILED", "Migrator: value cannot be zero") %}
     Migrator.initializer(source_address=SOURCE, target_address=TARGET, slot=slot, value=zero);
+    %{ stop_mock_source() %}
+    %{ stop_mock_target() %}
     return ();
 }
