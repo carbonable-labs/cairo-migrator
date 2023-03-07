@@ -22,7 +22,11 @@ const ANYONE = 0x1000;
 func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     let slot = Uint256(low=SLOT, high=0);
     let value = Uint256(low=VALUE, high=0);
+    %{ stop_mock_source = mock_call(ids.SOURCE, "supportsInterface", [1]) %}
+    %{ stop_mock_target = mock_call(ids.TARGET, "supportsInterface", [1]) %}
     Migrator.initializer(source_address=SOURCE, target_address=TARGET, slot=slot, value=value);
+    %{ stop_mock_source() %}
+    %{ stop_mock_target() %}
     return ();
 }
 
