@@ -50,7 +50,39 @@ func test_migration{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuilt
                )))
     %}
     %{ start_prank(ids.ANYONE) %}
-    let (new_token_id) = Migrator.migrate(token_id=token_id);
+    tempvar tokens = new (token_id);
+    let (new_token_id) = Migrator.migrate(token_ids_len=1, token_ids=tokens);
+    with_attr error_message("TestMigration: unexpect token id") {
+        assert_uint256_eq(new_token_id, expected_token_id);
+    }
+
+    return ();
+}
+
+@external
+func test_migration_multiple{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*}() {
+    alloc_locals;
+
+    let token1 = Uint256(low=TOKEN + 0, high=0);
+    let token2 = Uint256(low=TOKEN + 1, high=0);
+    let token3 = Uint256(low=TOKEN + 2, high=0);
+    let expected_token_id = Uint256(low=NEW_TOKEN, high=0);
+
+    %{ mock_call(ids.SOURCE, "transferFrom", []) %}
+    %{ mock_call(ids.SOURCE, "burn", []) %}
+    %{ mock_call(ids.TARGET, "mintNew", [ids.NEW_TOKEN, 0]) %}
+    %{
+        expect_events(dict(name="Migration", data=dict(
+                   address=ids.ANYONE,
+                   tokenId=dict(low=ids.TOKEN, high=0),
+                   newTokenId=dict(low=ids.NEW_TOKEN, high=0),
+                   slot=dict(low=ids.SLOT, high=0),
+                   value=dict(low=ids.VALUE, high=0),
+               )))
+    %}
+    %{ start_prank(ids.ANYONE) %}
+    tempvar tokens: Uint256* = cast(new (token1, token2, token3), Uint256*);
+    let (new_token_id) = Migrator.migrate(token_ids_len=3, token_ids=tokens);
     with_attr error_message("TestMigration: unexpect token id") {
         assert_uint256_eq(new_token_id, expected_token_id);
     }
@@ -66,7 +98,9 @@ func test_migration_revert_invalid_token{
 
     let token_id = Uint256(low=-1, high=-1);
     %{ expect_revert("TRANSACTION_FAILED", "Migrator: token_id is not a valid Uint256") %}
-    let (new_token_id) = Migrator.migrate(token_id=token_id);
+    %{ mock_call(ids.TARGET, "mintNew", [ids.NEW_TOKEN, 0]) %}
+    tempvar tokens = new (token_id);
+    let (new_token_id) = Migrator.migrate(token_ids_len=1, token_ids=tokens);
 
     return ();
 }
