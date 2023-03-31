@@ -56,9 +56,9 @@ func value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() ->
 //
 
 @external
-func migrate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tokenId: Uint256) -> (
-    newTokenId: Uint256
-) {
-    let (new_token_id) = Migrator.migrate(token_id=tokenId);
+func migrate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    tokenIds_len: felt, tokenIds: Uint256*
+) -> (newTokenId: Uint256) {
+    let (new_token_id) = Migrator.migrate(token_ids_len=tokenIds_len, token_ids=tokenIds);
     return (newTokenId=new_token_id);
 }
