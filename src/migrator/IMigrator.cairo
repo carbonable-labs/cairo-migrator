@@ -18,6 +18,6 @@ namespace IMigrator {
     func value() -> (value: Uint256) {
     }
 
-    func migrate(tokenId: Uint256) -> (newTokenId: Uint256) {
+    func migrate(tokenIds_len: felt, tokenIds: Uint256*) -> (newTokenId: Uint256) {
     }
 }

@@ -57,10 +57,14 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         ids.contract_address = context.contract_address
     %}
 
-    let token_id = Uint256(low=1, high=0);
+    let token1 = Uint256(low=1, high=0);
+    let token2 = Uint256(low=2, high=0);
+    let token3 = Uint256(low=3, high=1);
 
     %{ stop_prank = start_prank(caller_address=ids.OWNER, target_contract_address=context.source_address) %}
-    IERC721Mintable.mint(contract_address=source_address, to=ANYONE, tokenId=token_id);
+    IERC721Mintable.mint(contract_address=source_address, to=ANYONE, tokenId=token1);
+    IERC721Mintable.mint(contract_address=source_address, to=ANYONE, tokenId=token2);
+    IERC721Mintable.mint(contract_address=source_address, to=ANYONE, tokenId=token3);
     %{ stop_prank() %}
 
     %{ stop_prank = start_prank(caller_address=ids.ANYONE, target_contract_address=context.source_address) %}
@@ -73,18 +77,48 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 @view
-func test_migrate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+func test_migrate_mutliple{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
 
     local contract_address;
+    local target_address;
     %{
         ids.contract_address = context.contract_address
+        ids.target_address = context.target_address
         start_prank(caller_address=ids.ANYONE, target_contract_address=context.contract_address)
         start_prank(caller_address=context.contract_address, target_contract_address=context.source_address)
     %}
 
-    let token_id = Uint256(low=1, high=0);
-    let (new_token_id) = IMigrator.migrate(contract_address=contract_address, tokenId=token_id);
+    let token1 = Uint256(low=1, high=0);
+    let token2 = Uint256(low=2, high=0);
+    let token3 = Uint256(low=3, high=1);
 
+    local token_ids: Uint256* = cast(new (token1, token2, token3), Uint256*);
+    %{
+        for (token_low, token_high) in [(memory[ids.token_ids.address_ + 2*i], memory[ids.token_ids.address_ + 2*i+1]) for i in range(3)]:
+            expect_events(dict(name="Migration", data=dict(
+               address=ids.ANYONE,
+               tokenId=dict(low=token_low, high=token_high),
+               newTokenId=dict(low=1, high=0),
+               slot=dict(low=ids.SLOT, high=0),
+               value=dict(low=ids.VALUE, high=0),
+            )))
+            expect_events(dict(name="Transfer", data=dict(
+               from_=ids.ANYONE,
+               to=ids.contract_address,
+               tokenId=dict(low=token_low, high=token_high),
+            )))
+            expect_events(dict(name="Transfer", data=dict(
+               from_=ids.contract_address,
+               to=0,
+               tokenId=dict(low=token_low, high=token_high),
+            )))
+    %}
+    let (new_token_id) = IMigrator.migrate(
+        contract_address=contract_address, tokenIds_len=3, tokenIds=token_ids
+    );
+
+    let (value) = IERC3525Full.valueOf(contract_address=target_address, tokenId=new_token_id);
+    assert value = Uint256(low=VALUE * 3, high=0);
     return ();
 }

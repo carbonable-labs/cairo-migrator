@@ -6,12 +6,13 @@
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
-from starkware.cairo.common.uint256 import Uint256, uint256_check, uint256_eq
+from starkware.cairo.common.uint256 import Uint256, uint256_check, uint256_eq, uint256_mul
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
 // Project dependencies
 from openzeppelin.introspection.erc165.IERC165 import IERC165
 from openzeppelin.token.erc721.IERC721 import IERC721
+from openzeppelin.security.safemath.library import SafeUint256
 from openzeppelin.utils.constants.library import IERC721_ID
 from erc3525.IERC3525Full import IERC3525Full
 from erc3525.utils.constants.library import IERC3525_ID
@@ -143,10 +144,21 @@ namespace Migrator {
     // Externals
     //
 
-    func migrate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-        token_id: Uint256
-    ) -> (new_token_id: Uint256) {
-        alloc_locals;
+    func _migrate_all{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+        token_ids_len: felt,
+        token_ids: Uint256*,
+        slot: Uint256,
+        new_token_id: Uint256,
+        source: felt,
+        caller: felt,
+        migrator: felt,
+        value: Uint256,
+    ) {
+        if (token_ids_len == 0) {
+            return ();
+        }
+
+        let token_id = token_ids[0];
 
         // [Check] Uint256 compliance
         with_attr error_message("Migrator: token_id is not a valid Uint256") {
@@ -154,28 +166,57 @@ namespace Migrator {
         }
 
         // [Interaction] Transfer token to the contract
-        let (source_address) = Migrator_source_address_.read();
-        let (caller) = get_caller_address();
-        let (contract_address) = get_contract_address();
-        IERC721.transferFrom(
-            contract_address=source_address, from_=caller, to=contract_address, tokenId=token_id
-        );
+        IERC721.transferFrom(contract_address=source, from_=caller, to=migrator, tokenId=token_id);
 
         // [Interaction] Burn the token
-        IERC721Burnable.burn(contract_address=source_address, tokenId=token_id);
-
-        // [Interaction] Mint the new token with the corresponding value
-        let (target_address) = Migrator_target_address_.read();
-        let (slot) = Migrator_slot_.read();
-        let (value) = Migrator_value_.read();
-
-        let (new_token_id) = IERC3525Full.mintNew(
-            contract_address=target_address, to=caller, slot=slot, value=value
-        );
+        IERC721Burnable.burn(contract_address=source, tokenId=token_id);
 
         // [Effect] Emit event
         Migration.emit(
             address=caller, tokenId=token_id, newTokenId=new_token_id, slot=slot, value=value
+        );
+
+        return _migrate_all(
+            token_ids_len - 1,
+            token_ids + Uint256.SIZE,
+            slot,
+            new_token_id,
+            source,
+            caller,
+            migrator,
+            value,
+        );
+    }
+
+    func migrate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+        token_ids_len: felt, token_ids: Uint256*
+    ) -> (new_token_id: Uint256) {
+        alloc_locals;
+
+        // [Interaction] Mint new token with value
+        let num_tokens = Uint256(low=token_ids_len, high=0);
+        let (unit_value) = Migrator_value_.read();
+        let (value) = SafeUint256.mul(num_tokens, unit_value);
+        let (target_address) = Migrator_target_address_.read();
+        let (slot) = Migrator_slot_.read();
+        let (caller) = get_caller_address();
+        let (new_token_id) = IERC3525Full.mintNew(
+            contract_address=target_address, to=caller, slot=slot, value=value
+        );
+
+        // [Interaction] Transfer and burn old tokens
+        let (source_address) = Migrator_source_address_.read();
+        let (contract_address) = get_contract_address();
+
+        _migrate_all(
+            token_ids_len,
+            token_ids,
+            slot,
+            new_token_id,
+            source_address,
+            caller,
+            contract_address,
+            unit_value,
         );
 
         return (new_token_id=new_token_id);
