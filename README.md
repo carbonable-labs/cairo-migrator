@@ -25,24 +25,24 @@ A Cairo implementation of a ERC-721 to ERC-3525 migrator.
 
 #### 📦 Requirements
 
-- [protostar](https://github.com/software-mansion/protostar)
-
-### 🎉 Install
-
-```bash
-make install
-```
+- [scarb](https://docs.swmansion.com/scarb/)
 
 ### ⛏️ Compile
 
 ```bash
-make build
+scarb build
+```
+
+### 💄 Code style
+
+```bash
+scarb fmt
 ```
 
 ### 🌡️ Test
 
 ```bash
-make test
+scarb test
 ```
 
 ## 📄 License
