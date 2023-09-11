@@ -14,5 +14,6 @@ mod tests {
         mod erc721;
         mod erc3525;
     }
+    #[cfg(test)]
     mod test_migrator;
 }
