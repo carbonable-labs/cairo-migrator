@@ -1,22 +1,29 @@
 #[starknet::contract]
 mod Migrate {
-    // Starknet deps
+    // Starknet imports
+
     use starknet::{ContractAddress, get_contract_address, get_caller_address};
 
-    // External deps
+    // External imports
+
     use cairo_erc_3525::interface::IERC3525_ID;
     use openzeppelin::introspection::interface::{
         ISRC5Dispatcher, ISRC5DispatcherTrait, ISRC5CamelDispatcher, ISRC5CamelDispatcherTrait
     };
     use openzeppelin::token::erc721::interface::{
-        IERC721_ID, IERC721CamelOnlyDispatcher, IERC721CamelOnlyDispatcherTrait
+        IERC721CamelOnlyDispatcher, IERC721CamelOnlyDispatcherTrait
     };
 
-    // Project deps
+    // Internal imports
+
     use migrator::components::migrate::interface::{
         IMigrate, IERC721BurnableDispatcher, IERC721BurnableDispatcherTrait,
         IERC3525MintableDispatcher, IERC3525MintableDispatcherTrait
     };
+
+    // Constants
+
+    const IERC721_ID: felt252 = 0x80ac58cd;
 
     #[storage]
     struct Storage {

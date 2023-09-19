@@ -1,2 +1,4 @@
 target
 .env
+account.json
+keystore.json
