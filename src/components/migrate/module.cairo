@@ -67,6 +67,8 @@ mod Migrate {
         }
 
         fn migrate(ref self: ContractState, mut token_ids: Span<u256>) -> u256 {
+            // [Check] Token ids is not empty
+            assert(token_ids.len() > 0, 'Token ids cannot be empty');
             // [Interaction] Mint new token with value
             let target = self._migrate_target_address.read();
             let caller = get_caller_address();
@@ -162,25 +164,29 @@ mod Migrate {
 
 #[cfg(test)]
 mod Test {
-    // Starknet deps
+    // Core imports
+
+    use debug::PrintTrait;
+
+    // Starknet imports
+
     use starknet::{
         ContractAddress, get_contract_address, get_caller_address, contract_address_const
     };
     use starknet::testing::{set_caller_address, set_contract_address};
 
-    // External deps
+    // External imports
+
     use cairo_erc_3525::interface::{IERC3525Dispatcher, IERC3525DispatcherTrait};
     use openzeppelin::account::account::Account;
     use openzeppelin::token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
 
-    // Project deps
+    // Internal imports
+
     use migrator::tests::mocks::erc721::{
         ERC721, IERC721MintableDispatcher, IERC721MintableDispatcherTrait
     };
     use migrator::tests::mocks::erc3525::ERC3525;
-    use debug::PrintTrait;
-
-    // Local deps
     use super::Migrate;
 
     // Constants
@@ -305,6 +311,27 @@ mod Test {
 
     #[test]
     #[available_gas(20_000_000)]
+    #[should_panic(expected: ('Token ids cannot be empty',))]
+    fn test_migrate_revert_no_token() {
+        // [Setup]
+        let (signers, contracts) = setup();
+        let mut state = STATE();
+        Migrate::InternalImpl::initializer(
+            ref state, contracts.source, contracts.target, SLOT, VALUE
+        );
+        let erc721 = IERC721Dispatcher { contract_address: contracts.source };
+        let initial_balance = erc721.balance_of(signers.anyone);
+        // [Assert] Approve and Migrate
+        set_contract_address(signers.anyone);
+        erc721.approve(CONTRACT_ADDRESS(), ONE);
+        set_contract_address(CONTRACT_ADDRESS());
+        set_caller_address(signers.anyone);
+        let target_address = Migrate::MigrateImpl::target_address(@state);
+        Migrate::MigrateImpl::migrate(ref state, array![].span());
+    }
+
+    #[test]
+    #[available_gas(20_000_000)]
     fn test_migrate_single() {
         // [Setup]
         let (signers, contracts) = setup();
@@ -343,6 +370,27 @@ mod Test {
 
     #[test]
     #[available_gas(20_000_000)]
+    #[should_panic(expected: ('ERC721: wrong sender', 'ENTRYPOINT_FAILED'))]
+    fn test_migrate_single_revert_not_owner() {
+        // [Setup]
+        let (signers, contracts) = setup();
+        let mut state = STATE();
+        Migrate::InternalImpl::initializer(
+            ref state, contracts.source, contracts.target, SLOT, VALUE
+        );
+        let erc721 = IERC721Dispatcher { contract_address: contracts.source };
+        let initial_balance = erc721.balance_of(signers.anyone);
+        // [Assert] Approve and Migrate
+        set_contract_address(signers.anyone);
+        erc721.approve(CONTRACT_ADDRESS(), ONE);
+        set_contract_address(CONTRACT_ADDRESS());
+        set_caller_address(signers.someone);
+        let target_address = Migrate::MigrateImpl::target_address(@state);
+        Migrate::MigrateImpl::migrate(ref state, array![ONE].span());
+    }
+
+    #[test]
+    #[available_gas(20_000_000)]
     fn test_migrate_multi() {
         // [Setup]
         let (signers, contracts) = setup();
@@ -371,5 +419,36 @@ mod Test {
         let erc3525 = IERC3525Dispatcher { contract_address: contracts.target };
         let value = erc3525.value_of(ONE);
         assert(value == 2 * VALUE, 'Target value is incorrect');
+    }
+
+    #[test]
+    #[available_gas(135_000_000)]
+    fn test_migrate_a_lot() {
+        // [Setup]
+        let (signers, contracts) = setup();
+        let mut state = STATE();
+        Migrate::InternalImpl::initializer(
+            ref state, contracts.source, contracts.target, SLOT, VALUE
+        );
+        // Mint 100 tokens from 4 to 103
+        let erc721 = IERC721MintableDispatcher { contract_address: contracts.source };
+        let mut token_ids: Array<u256> = ArrayTrait::new();
+        let mut token_id: u256 = 103;
+        loop {
+            if token_id == 3 {
+                break;
+            };
+            erc721.mint(signers.anyone, token_id);
+            token_ids.append(token_id);
+            token_id -= 1;
+        };
+        // [Assert] Approve and Migrate
+        set_contract_address(signers.anyone);
+        let erc721 = IERC721Dispatcher { contract_address: contracts.source };
+        erc721.set_approval_for_all(CONTRACT_ADDRESS(), true);
+        set_contract_address(CONTRACT_ADDRESS());
+        set_caller_address(signers.anyone);
+        let target_address = Migrate::MigrateImpl::target_address(@state);
+        Migrate::MigrateImpl::migrate(ref state, token_ids.span());
     }
 }
