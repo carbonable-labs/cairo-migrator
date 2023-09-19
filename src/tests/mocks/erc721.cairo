@@ -10,19 +10,24 @@ trait IERC721Burnable<TContractState> {
 
 #[starknet::contract]
 mod ERC721 {
-    // Core deps
+    // Core imports
+
     use traits::Into;
 
-    // Starknet deps
+    // Starknet imports
+
     use starknet::{get_caller_address, ContractAddress};
 
-    // External deps
+    // External imports
+
     use openzeppelin::introspection::interface::{ISRC5, ISRC5Camel};
     use openzeppelin::introspection::src5::SRC5;
     use openzeppelin::token::erc721::interface::{IERC721, IERC721CamelOnly};
     use openzeppelin::token::erc721::erc721::ERC721;
 
-    // Local deps
+    // Internal imports
+
+    use migrator::components::migrate::module::Migrate::IERC721_ID;
     use super::IERC721Mintable;
     use super::IERC721Burnable;
 
@@ -168,6 +173,8 @@ mod ERC721 {
     #[generate_trait]
     impl InternalImpl of InternalTrait {
         fn initializer(ref self: ContractState) {
+            let mut unsafe_state = SRC5::unsafe_new_contract_state();
+            SRC5::InternalImpl::register_interface(ref unsafe_state, IERC721_ID);
             let mut unsafe_state = ERC721::unsafe_new_contract_state();
             ERC721::InternalImpl::initializer(ref unsafe_state, 1, 1);
         }
