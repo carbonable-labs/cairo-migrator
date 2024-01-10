@@ -1,4 +1,30 @@
-target
-.env
+# IDE
+.vscode
 account.json
 keystore.json
+
+# Python
+__pycache__
+env
+test.*
+
+# starknet 
+node.json
+*.deployments.txt
+artifacts
+target
+
+# nile
+127.0.0.1.*
+
+# Protostar
+build
+*logs.json
+
+.DS_Store
+
+# system & test
+tmp
+.tmp*
+.env*
+scripts/debug_*
